@@ -1,0 +1,170 @@
+1
+Create the PostRepository Interface
+
+We went ahead and created the Blog Post and Author models in the src/main/java/com.pluralsight.blog/models/ directory.  Now we want to create the corresponding repositories for each model to be able to create/read/update/delete (CRUD) data for our API.
+
+In the src/main/java/com.pluralsight.blog/data directory, in PostRepository.java, we want to create a PostRepository interface that extends the JpaRepository interface. To do this, delete everything except the package, and replace it with public interface PostRepository extends JpaRepository<Post, Long> {} (Don’t forget to import both org.springframework.data.jpa.repository.JpaRepository and org.springframework.data.rest.core.annotation.RestResource).
+
+This will then automatically create the REST API endpoints and corresponding CRUD operations for the Post Entity.  You can see this by running the app and visiting localhost:8080 in a browser and seeing:
+
+{
+  "_links" : {
+    "posts" : {
+      "href" : "http://localhost:8080/posts{?page,size,sort}",
+      "templated" : true
+    },
+    "profile" : {
+      "href" : "http://localhost:8080/profile"
+    }
+  }
+}
+If you visit localhost:8080/posts you can see an empty list [ ] since we haven’t added any post data yet.
+
+2
+Add PostRepository to DatabaseLoader
+
+In the src/main/java/com.pluralsight.blog/data directory, in DatabaseLoader.java, we are going to generate some semi-random blog post data.  But first, to be able to save the posts, add a private final PostRepository named postRepository as a class variable.  To initialize this, add a PostRepository parameter to the constructor and initialize this.postRepository to the passed in parameter.  Also add @Autowired before the constructor.
+
+3
+Save Database Data
+
+In DatabaseLoader.java, in the run() method, we generated 40 semi-random Posts.  Now we want to save those Posts to the postRepository.  Inside run(), after the for loop, call postRepository.saveAll() and pass in the randomPosts list.
+
+Now if we run our app and visit localhost:8080/posts in a browser we can see all of the posts listed.
+
+4
+Set the Default Page Size
+
+Since we’d like only 8 posts to show up on a page at a time, we can open the src/main/resources/application.properties file and add the following line: spring.data.rest.default-page-size=8
+
+If we refresh and visit localhost:8080/posts we can see 8 posts listed, and then at the bottom we can see the links for the next and last pages.
+
+ "_links" : {
+    "first" : {
+      "href" : "http://localhost:8080/posts?page=0&size=8"
+    },
+    "self" : {
+      "href" : "http://localhost:8080/posts{?page,size,sort}",
+      "templated" : true
+    },
+    "next" : {
+      "href" : "http://localhost:8080/posts?page=1&size=8"
+    },
+    "last" : {
+      "href" : "http://localhost:8080/posts?page=4&size=8"
+    },
+    "profile" : {
+      "href" : "http://localhost:8080/profile/posts"
+    },
+    "search" : {
+      "href" : "http://localhost:8080/posts/search"
+    }
+5
+Add Search by Title Containing
+
+We want to easily search by checking if the title contains certain words.  In PostRepository.java, we can add a custom search for this.  Simply add a method declaration findByTitleContaining that takes a String title and returns List<Post>.
+
+To see this working, run the app and go to http://localhost:8080/posts/search. You can see the search query defined with parameters.  If we then go to http://localhost:8080/posts/search/findByTitleContaining?title=Smart we can see all of the posts that have "Smart" in the title.
+
+6
+Edit the Default Search Name
+
+Since the findByTitleContaining path is a little long, we can rename it.  Above the findByTitleContaining() declaration add an @RestResource annotation with (rel="contains-title", path="containsTitle").  Now we can search for "Smart" in the title with the shorter URL - http://localhost:8080/posts/search/containsTitle?title=Smart.
+
+1
+Create the AuthorRepository
+
+We previously created an Author Entity so that we can show author information and be able to list posts by author. Now we need an AuthorRepository interface that extends the JpaRepository interface. To do this, in AuthorRepository.java, delete everything except the package. Replace it with public interface AuthorRepository extends JpaRepository<Author, Long> {}, and make sure you also import org.springframework.data.jpa.repository.JpaRepository and com.pluralsight.blog.model.Author.
+
+2
+Add an Author Relationship to Post
+
+Since we want to connect Author to Post, we need to add a relationship to Author inside the Post Entity. Add a private Author property called author to the Post Entity class and use the @ManyToOne annotation with (fetch = FetchType.EAGER). We also need to do a few additional things in the Post class for the Author relationship:
+
+Add a getter, public Author getAuthor(), that returns author.
+Add a setter, public void setAuthor(Author author), that sets this.author to the passed in parameter.
+3
+Add a Post Relationship to Author
+
+Add the corresponding property to the Author Entity class, which will be a List<Post> called posts with the @OneToMany annotation. We also need to do a few additional things in the Author class for the Post relationship:
+
+To the default constructor, after super();, initialize posts to a new empty ArrayList.
+Also edit the getter, public List<Post> getPosts(), to return posts instead of null.
+And in lieu of a setter, edit public void addPost(Post post) to add the passed-in post parameter to the posts list instead of the return; statement.
+4
+Add AuthorRepository to DatabaseLoader
+
+To add Authors to the database and attach them to posts, we need to update src/main/java/com.pluralsight.blog/DatabaseLoader.java. First, we need to add a private final AuthorRepository named authorRepository as a class variable. To initialize this, add an AuthorRepository parameter to the existing constructor, and set this.authorRepository to the passed in parameter.
+
+5
+Create Author Data
+
+Let’s create some authors. In DatabaseLoader.java, in the run() method, before the forEach loop add 4 new Author objects to the authors List like so:
+
+authors.addAll(Arrays.asList(
+       new Author("sholderness", "Sarah",  "Holderness", "password"),
+       new Author("tbell", "Tom",  "Bell", "password"),
+       new Author("efisher", "Eric",  "Fisher", "password"),
+       new Author("csouza", "Carlos",  "Souza", "password")
+));
+Then on the next line, save that authors List to the authorRepository with the saveAll() method.
+
+6
+Attach Authors to Posts
+
+Now we can add the authors to the generated Post data.
+
+First, inside the forEach loop use the same i modulus(%) on authors.size()  inside a call to authors.get().  Assign the result to an Author variable.
+
+Then call post.setAuthor() with the new Author you just referenced on the line after the Post object is created.
+
+Also add the Post to the Author by calling author.addPost() with the Post variable.
+
+Finally after the loop, after postRepository.saveAll(), call authorRepository.saveAll() with the authors List again to update the authors with the posts.
+
+7
+Add Search for Posts by Author
+
+We would like to be able to find a list of posts written by a certain author. In PostRepository.java, we can add a custom search for this. Simply add a method declaration findByAuthor_Lastname that takes a String lastname and returns List<Post>.
+
+To see this working, run the app and go to http://localhost:8080/posts/search. You can see the search query defined with parameters. If we then go to http://localhost:8080/posts/search/findByAuthor_Lastname?lastname=Holderness we can see all of the posts written by the "Holderness" author.
+
+8
+Hiding Author Properties
+
+Right now we can see the authors’ username and password, which we want to hide. Add @JsonIgnore before the username and password properties in Author.java.
+
+If we run the app and go to http://localhost:8080/authors, we can see the username and password aren’t listed.
+
+9
+Removing Author from the API
+
+Assume we don’t want to allow browsing the authors at all, we only want authors to be displayed within a Post. Add @RepositoryRestResource(exported = false) before the AuthorRepository interface declaration.
+
+Now if we run the app and go to localhost:8080, we do not see the author link listed. But we can see the authors’ first name and last name listed with each post at localhost:8080/posts.
+
+1
+Add a Version to the Entities
+
+To ensure that the API client(s) aren’t using stale data, we can add a version to the Post and Author entities. Then every time a record gets updated, hibernate will automatically increment the version counter with 1. And the clients only need to update if the version has changed. Add a @Version private Long version to the Post class and the Author class after the id.
+
+To see this working, first re-run the app. Then in the terminal, run curl -H "Accept: application/json" -i http://localhost:8080/posts/1. You should see ETag: “0” at the top along with the Post’s data.
+
+Now we can do another GET, but instead only ask for results if the ETag is not 0 - curl -H "Accept: application/json" -H 'If-None-Match: "0"' -i http://localhost:8080/posts/1. This time, we get HTTP/1.1 304 Not Modified since the ETag is still 0.
+
+2
+Add an API Version
+
+We just added a version to our entities, but what if we also wanted to add a version to the API itself? Add spring.data.rest.basePath = /api/v1 to the src/main/resources/application.properties file. Now if we run the app, the API is located at localhost:8080/api/v1/ (notice the /api/v1 at the end of the url).
+
+Now since the current API is V1, we can release a totally new API V2 without affecting the other users of API V1. (Remember to visit our app running now we need to use the new URL: http://localhost:8080/api/v1/)
+
+3
+Add Validation to the Post Entity
+
+Right now it's possible to add a Post with an empty title. Let’s add validation to the title property in the Post.java class. Add @NotNull to the title class property. Also add @Size(min = 4, max = 100) since we don’t want titles that are too long or too short.
+
+To see this working, first re-run the app. Then in the terminal, run curl -i -X POST -H "Content-Type:application/json" -d '{"title" : "This is the title", "body" : "This is the body."}' http://localhost:8080/api/v1/posts We can see we get HTTP/1.1 201 Created since the Post was created successfully.
+
+But if we instead put in a blank title in the following command: curl -i -X POST -H "Content-Type:application/json" -d '{"title" : "", "body" : "This is the body."}' http://localhost:8080/api/v1/posts We will get HTTP/1.1 500 Internal Server Error since Spring throws a validation exception.
+
