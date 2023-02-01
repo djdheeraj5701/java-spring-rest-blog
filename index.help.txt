@@ -1,0 +1,20 @@
+~~ what is JpaRepository
+=> java persistence API, repo contains basic CRUD ops, pagination, sorting
+The main advantage of JPA over JDBC for developers is that they can code their Java applications
+using oop principles and best practices without having to worry about database semantics
+
+~~ or.mockito.exceptions.base.MockitoException: Mockito cannot mock this class: class jdk.proxy2.$Proxy108
+=> It is because of java/mockito compatibility.
+2.17.0 for java 8
+2.18.0 - 3.2.4 for java 11
+
+~~ difference between FetchType.EAGER and FetchType.LAZY
+=> Consider one university has many students. So class variable List<Student> students in university
+Now when you load a University from the db, JPA loads its id, name, address
+But for loading students you have 2 options:
+To load together with rest of the fields i.e. eagerly or
+To load it on-demand i.e. lazily when university.getStudents() method is called
+It is inefficient to load all students data if it is not required and only load when needed.
+This is called lazy loading
+lazy: select * from university
+eager: select * from university join students
