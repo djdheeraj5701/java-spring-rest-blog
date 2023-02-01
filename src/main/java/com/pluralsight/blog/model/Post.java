@@ -17,6 +17,9 @@ public class Post {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
+    @Version
+    private Long version;
+    @NotNull@Size
     private String title;
     @Column(length=1000000)
     @Lob
@@ -80,4 +83,14 @@ public class Post {
         return this.title.equals(otherPost.getTitle()) &&
                this.body.equals(otherPost.getBody());
     }
+
+    @ManyToOne(fetch = FetchType.EAGER)
+    private Author author;
+    public Author getAuthor(){
+        return author;
+    }
+    public void setAuthor(Author author){
+        this.author=author;
+    }
+
 }
